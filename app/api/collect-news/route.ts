@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import { collectNews } from "@/lib/rss-collector";
 
@@ -6,32 +5,26 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-export async function POST(request: NextRequest) {
-  const generationSecret = process.env.AI_NEWS_HUB_GENERATION_SECRET;
+function isAuthorized(request: NextRequest) {
+  const isVercelSchedule =
+    request.headers.get("ce-type") === "com.vercel.schedule.v1beta";
+
+  const expectedSecret = isVercelSchedule
+    ? process.env.CRON_SECRET
+    : process.env.AI_NEWS_HUB_GENERATION_SECRET;
+
   const suppliedSecret = request.headers.get("authorization");
 
-  if (!generationSecret) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Collection endpoint secret is not configured.",
-      },
-      { status: 500 }
-    );
-  }
+  return Boolean(
+    expectedSecret && suppliedSecret === `Bearer ${expectedSecret}`
+  );
+}
 
-  if (suppliedSecret !== `Bearer ${generationSecret}`) {
-    return NextResponse.json(
-      { success: false, error: "Unauthorized." },
-      { status: 401 }
-    );
-  }
-
+async function runCollection() {
   try {
     const result = await collectNews();
-
     return NextResponse.json(result);
-    } catch (error) {
+  } catch (error) {
     console.error("[collect-news] Collection failed:", error);
 
     const errorDetails =
@@ -49,4 +42,16 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Vercel Schedules calls this route using POST.
+export async function POST(request: NextRequest) {
+  if (!isAuthorized(request)) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized." },
+      { status: 401 }
+    );
+  }
+
+  return runCollection();
 }
