@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, type CSSProperties, type FormEvent } from 'react';
 import {
   ArrowLeft,
   Check,
@@ -67,7 +67,7 @@ const emptyForm: ReviewForm = {
   suggested_resources: '',
 };
 
-const inputStyle: React.CSSProperties = {
+const inputStyle: CSSProperties = {
   width: '100%',
   border: '1px solid var(--border)',
   borderRadius: 9,
