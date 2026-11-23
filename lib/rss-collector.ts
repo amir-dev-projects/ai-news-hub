@@ -35,7 +35,8 @@ const parser = new Parser({
   timeout: 15000,
   headers: {
     "User-Agent": "AI-News-Hub/1.0 (+RSS news aggregator)",
-    Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml",
+    Accept:
+      "application/rss+xml, application/atom+xml, application/xml, text/xml",
   },
 });
 
@@ -79,27 +80,81 @@ function categoryForArticle(
   const rules: Array<{ category: string; terms: string[] }> = [
     {
       category: "AI Models",
-      terms: ["foundation model", "language model", "llm", "model release", "model update", "gemini", "gpt-", "claude", "multimodal model", "open model"],
+      terms: [
+        "foundation model",
+        "language model",
+        "llm",
+        "model release",
+        "model update",
+        "gemini",
+        "gpt-",
+        "claude",
+        "multimodal model",
+        "open model",
+      ],
     },
     {
       category: "Open Source",
-      terms: ["open source", "open-source", "github", "open weights", "hugging face", "license", "repository"],
+      terms: [
+        "open source",
+        "open-source",
+        "github",
+        "open weights",
+        "hugging face",
+        "license",
+        "repository",
+      ],
     },
     {
       category: "AI Tools",
-      terms: ["developer tool", "api", "sdk", "agent platform", "plugin", "workflow tool", "copilot", "coding assistant"],
+      terms: [
+        "developer tool",
+        "api",
+        "sdk",
+        "agent platform",
+        "plugin",
+        "workflow tool",
+        "copilot",
+        "coding assistant",
+      ],
     },
     {
       category: "Business",
-      terms: ["funding", "investment", "acquisition", "partnership", "revenue", "enterprise", "business", "market"],
+      terms: [
+        "funding",
+        "investment",
+        "acquisition",
+        "partnership",
+        "revenue",
+        "enterprise",
+        "business",
+        "market",
+      ],
     },
     {
       category: "Research",
-      terms: ["research", "paper", "study", "benchmark", "arxiv", "scientists", "evaluation", "experiment"],
+      terms: [
+        "research",
+        "paper",
+        "study",
+        "benchmark",
+        "arxiv",
+        "scientists",
+        "evaluation",
+        "experiment",
+      ],
     },
     {
       category: "Generative AI",
-      terms: ["generative ai", "image generation", "video generation", "text-to-image", "text-to-video", "synthetic media", "diffusion"],
+      terms: [
+        "generative ai",
+        "image generation",
+        "video generation",
+        "text-to-image",
+        "text-to-video",
+        "synthetic media",
+        "diffusion",
+      ],
     },
   ];
 
@@ -110,6 +165,22 @@ function categoryForArticle(
   }
 
   return categories.find((item) => item.name === "Generative AI")?.id || null;
+}
+
+function getErrorDetails(error: unknown): string {
+  if (error instanceof Error) {
+    return `${error.name}: ${error.message}`;
+  }
+
+  if (typeof error === "object" && error !== null) {
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
+
+  return String(error);
 }
 
 async function collectOneSource(
@@ -132,7 +203,8 @@ async function collectOneSource(
     const response = await fetch(feedUrl, {
       headers: {
         "User-Agent": "AI-News-Hub/1.0 (+RSS news aggregator)",
-        Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml",
+        Accept:
+          "application/rss+xml, application/atom+xml, application/xml, text/xml",
       },
       signal: AbortSignal.timeout(20000),
       cache: "no-store",
@@ -143,8 +215,17 @@ async function collectOneSource(
     }
 
     const xml = await response.text();
+
+    if (!xml.trim()) {
+      throw new Error("Feed returned an empty response.");
+    }
+
     const feed = await parser.parseString(xml);
-    const items = (feed.items || []).slice(0, MAX_ITEMS_PER_FEED) as FeedItem[];
+
+    const items = (feed.items || []).slice(
+      0,
+      MAX_ITEMS_PER_FEED
+    ) as FeedItem[];
 
     const rows = items
       .map((item) => {
@@ -154,7 +235,10 @@ async function collectOneSource(
         if (!title || !articleUrl) return null;
 
         const summary = cleanText(
-          item.contentSnippet || item.summary || item.content || undefined
+          item.contentSnippet ||
+            item.summary ||
+            item.content ||
+            undefined
         );
 
         const rawDate = item.isoDate || item.pubDate;
@@ -166,6 +250,7 @@ async function collectOneSource(
             : null;
 
         const imageUrl = validHttpUrl(item.enclosure?.url);
+
         const categoryId = categoryForArticle(
           title,
           summary || "",
@@ -178,7 +263,9 @@ async function collectOneSource(
           title,
           article_url: articleUrl,
           summary,
-          author: cleanText(item.creator || item.author || undefined),
+          author: cleanText(
+            item.creator || item.author || undefined
+          ),
           image_url: imageUrl,
           published_at: publishedAt,
           is_published: true,
@@ -215,15 +302,19 @@ async function collectOneSource(
       inserted: data?.length || 0,
     };
   } catch (error) {
+    const errorDetails = getErrorDetails(error);
+
+    console.error(
+      `[rss-collector] Failed source: ${source.name}`,
+      errorDetails
+    );
+
     return {
       source: source.name,
       status: "error",
       fetched: 0,
       inserted: 0,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Unknown feed collection error.",
+      error: errorDetails || "Unknown feed collection error.",
     };
   }
 }
