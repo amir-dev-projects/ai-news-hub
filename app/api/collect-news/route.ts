@@ -5,19 +5,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-function isAuthorized(request: NextRequest) {
-  const isVercelSchedule =
-    request.headers.get("ce-type") === "com.vercel.schedule.v1beta";
-
-  const expectedSecret = isVercelSchedule
-    ? process.env.CRON_SECRET
-    : process.env.AI_NEWS_HUB_GENERATION_SECRET;
-
-  const suppliedSecret = request.headers.get("authorization");
-
-  return Boolean(
-    expectedSecret && suppliedSecret === `Bearer ${expectedSecret}`
-  );
+function hasBearerSecret(request: NextRequest, secret: string | undefined) {
+  if (!secret) return false;
+  return request.headers.get("authorization") === `Bearer ${secret}`;
 }
 
 async function runCollection() {
@@ -44,9 +34,26 @@ async function runCollection() {
   }
 }
 
-// Vercel Schedules calls this route using POST.
+// Used by scheduled jobs. The secret is supplied by GitHub Actions.
+export async function GET(request: NextRequest) {
+  if (!hasBearerSecret(request, process.env.CRON_SECRET)) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized." },
+      { status: 401 }
+    );
+  }
+
+  return runCollection();
+}
+
+// Manual requests may continue using AI_NEWS_HUB_GENERATION_SECRET.
+// Scheduled POST requests may use CRON_SECRET.
 export async function POST(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  const isAuthorized =
+    hasBearerSecret(request, process.env.CRON_SECRET) ||
+    hasBearerSecret(request, process.env.AI_NEWS_HUB_GENERATION_SECRET);
+
+  if (!isAuthorized) {
     return NextResponse.json(
       { success: false, error: "Unauthorized." },
       { status: 401 }
