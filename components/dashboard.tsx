@@ -23,6 +23,7 @@ import {
   Brain,
   Clock3,
   ExternalLink,
+  AlertCircle,
   ShieldCheck,
 } from 'lucide-react';
 
@@ -103,6 +104,7 @@ type SiteInfo = {
   lastCollectionSuccess: boolean | null;
   sourcesFailed: number | null;
   collectionLogAvailable: boolean;
+  pendingTakeawaysCount: number | null;
 };
 
 type Article = {
@@ -152,11 +154,16 @@ export default function Dashboard() {
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null);
   const [siteInfoLoading, setSiteInfoLoading] = useState(true);
   const [siteInfoError, setSiteInfoError] = useState('');
+  const pendingReviewCount = siteInfo?.pendingTakeawaysCount ?? 0;
 
   useEffect(() => {
+    let isMounted = true;
+
     async function loadSiteInfo() {
-      setSiteInfoLoading(true);
-      setSiteInfoError('');
+      if (isMounted) {
+        setSiteInfoLoading(true);
+        setSiteInfoError('');
+      }
 
       try {
         const response = await fetch('/api/public/site-info', {
@@ -168,17 +175,33 @@ export default function Dashboard() {
           throw new Error(result.error || 'Unable to load source information.');
         }
 
-        setSiteInfo(result.siteInfo as SiteInfo);
+        if (isMounted) setSiteInfo(result.siteInfo as SiteInfo);
       } catch (error) {
-        setSiteInfoError(
-          error instanceof Error ? error.message : 'Unable to load source information.'
-        );
+        if (isMounted) {
+          setSiteInfoError(
+            error instanceof Error ? error.message : 'Unable to load source information.'
+          );
+        }
       } finally {
-        setSiteInfoLoading(false);
+        if (isMounted) setSiteInfoLoading(false);
       }
     }
 
-    loadSiteInfo();
+    function refreshWhenVisible() {
+      if (document.visibilityState === 'visible') {
+        void loadSiteInfo();
+      }
+    }
+
+    void loadSiteInfo();
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
   }, []);
 
   useEffect(() => {
@@ -458,10 +481,20 @@ export default function Dashboard() {
             href="/admin/takeaways"
             target="_blank"
             rel="noopener noreferrer"
-            className="nav-item sidebar-admin-link"
+            className={`nav-item sidebar-admin-link ${pendingReviewCount > 0 ? 'has-pending' : ''}`}
+            aria-label={
+              pendingReviewCount > 0
+                ? `Review ${pendingReviewCount} pending takeaways`
+                : 'Admin takeaway review'
+            }
           >
-            <ShieldCheck size={16} />
-            Admin · Takeaway review
+            {pendingReviewCount > 0 ? <AlertCircle size={16} /> : <ShieldCheck size={16} />}
+            <span>{pendingReviewCount > 0 ? 'Review takeaways' : 'Admin · Takeaway review'}</span>
+            {pendingReviewCount > 0 && (
+              <span className="sidebar-admin-badge">
+                {pendingReviewCount} pending
+              </span>
+            )}
           </a>
         </div>
 
