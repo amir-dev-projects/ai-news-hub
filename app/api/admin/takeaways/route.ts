@@ -75,7 +75,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  if (!isAuthorized(request)) return unauthorized();
+  const authError = accessError(request);
+  if (authError) return authError;
 
   try {
     const body = await request.json();
