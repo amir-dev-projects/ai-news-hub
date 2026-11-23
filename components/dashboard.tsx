@@ -100,12 +100,25 @@ type Article = {
 
 export default function Dashboard() {
   const [active, setActive] = useState('Overview');
+  const [greeting, setGreeting] = useState('Welcome');
   const [category, setCategory] = useState('All News');
   const [query, setQuery] = useState('');
   const [expandedTakeaways, setExpandedTakeaways] = useState<string[]>([]);
   const [takeaways, setTakeaways] = useState<Takeaway[]>([]);
   const [loadingTakeaways, setLoadingTakeaways] = useState(true);
   const [takeawayError, setTakeawayError] = useState('');
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+
+    if (hour >= 5 && hour < 12) {
+      setGreeting('Good morning');
+    } else if (hour >= 12 && hour < 17) {
+      setGreeting('Good afternoon');
+    } else {
+      setGreeting('Good evening');
+    }
+  }, []);
 
   function toggleTakeaway(id: string) {
     setExpandedTakeaways((current) =>
@@ -334,7 +347,7 @@ export default function Dashboard() {
 
               <h1 className="page-title">
                 {active === 'Overview'
-                  ? "Good morning. Here's what's happening in AI."
+                  ? `${greeting}. Here's what's happening in AI.`
                   : active}
               </h1>
 
@@ -693,9 +706,9 @@ export default function Dashboard() {
 
             <div className="stat-card">
               <div className="stat-label">Collection frequency target</div>
-              <div className="stat-value">30 min</div>
+              <div className="stat-value">6 hours</div>
               <div className="stat-foot">
-                Automated collection planned
+                Four scheduled collections daily
               </div>
             </div>
           </div>
