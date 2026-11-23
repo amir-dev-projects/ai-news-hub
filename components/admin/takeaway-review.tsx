@@ -159,7 +159,7 @@ export default function TakeawayReview() {
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!secret.trim()) {
-      setError('Enter the review secret to continue.');
+      setError('Enter the Admin secret to continue.');
       return;
     }
 
@@ -480,17 +480,17 @@ export default function TakeawayReview() {
             </div>
             <h2 style={{ fontSize: 17, margin: '0 0 7px' }}>Admin access</h2>
             <p style={{ color: 'var(--muted)', fontSize: 12, lineHeight: 1.6, margin: '0 0 17px' }}>
-              Enter the AI News Hub generation secret configured in Vercel. It is used for this session only and is not saved in the browser.
+              Enter the dedicated Admin secret configured as TAKEAWAYS_ADMIN_SECRET in Vercel. It is used for this session only and is not saved in the browser.
             </p>
             <form onSubmit={signIn}>
-              <label htmlFor="review-secret" style={fieldLabel}>Review secret</label>
+              <label htmlFor="review-secret" style={fieldLabel}>Admin secret</label>
               <input
                 id="review-secret"
                 type="password"
                 autoComplete="current-password"
                 value={secret}
                 onChange={(event) => setSecret(event.target.value)}
-                placeholder="Enter the generation secret"
+                placeholder="Enter your Admin secret"
                 style={inputStyle}
               />
               <button
