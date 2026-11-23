@@ -1,0 +1,32 @@
+name: Collect AI News
+
+on:
+  schedule:
+    # Fixed UTC hours correspond to midnight, 6 AM, noon and 6 PM
+    # in Vancouver during standard time. The schedule does not adjust
+    # automatically for daylight saving time.
+    - cron: "7 2,8,14,20 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  collect-news:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger AI News Hub collection endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET is not configured in GitHub Actions repository secrets."
+            exit 1
+          fi
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://ai-news-hub-gilt.vercel.app/api/collect-news" \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            --header "Content-Type: application/json" \
+            --data '{}'
