@@ -31,14 +31,20 @@ export async function POST(request: NextRequest) {
     const result = await collectNews();
 
     return NextResponse.json(result);
-  } catch (error) {
+    } catch (error) {
+    console.error("[collect-news] Collection failed:", error);
+
+    const errorDetails =
+      error instanceof Error
+        ? error.message
+        : typeof error === "object" && error !== null
+          ? JSON.stringify(error)
+          : String(error);
+
     return NextResponse.json(
       {
         success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Unknown collection error.",
+        error: errorDetails || "Unknown collection error.",
       },
       { status: 500 }
     );
