@@ -81,15 +81,19 @@ function isValidTakeaway(item: any): item is GeneratedTakeaway {
 export async function POST(request: NextRequest) {
   const generationSecret = process.env.AI_NEWS_HUB_GENERATION_SECRET;
   const suppliedSecret = request.headers.get("authorization");
+  const isAuthorized =
+    (Boolean(generationSecret) && suppliedSecret === `Bearer ${generationSecret}`) ||
+    (Boolean(process.env.CRON_SECRET) &&
+      suppliedSecret === `Bearer ${process.env.CRON_SECRET}`);
 
-  if (!generationSecret) {
+  if (!generationSecret && !process.env.CRON_SECRET) {
     return NextResponse.json(
       { success: false, error: "Generation endpoint secret is not configured." },
       { status: 500 }
     );
   }
 
-  if (suppliedSecret !== `Bearer ${generationSecret}`) {
+  if (!isAuthorized) {
     return NextResponse.json(
       { success: false, error: "Unauthorized." },
       { status: 401 }
