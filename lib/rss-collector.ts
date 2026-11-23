@@ -357,14 +357,36 @@ export async function collectNews() {
   const failedSources = results.filter(
     (item) => item.status === "error"
   );
-
-  return {
+  const collectionTime = new Date().toISOString();
+  const collectionSummary = {
     success: failedSources.length === 0,
-    collection_time: new Date().toISOString(),
+    collection_time: collectionTime,
     sources_checked: activeSources.length,
     sources_failed: failedSources.length,
     total_fetched: totalFetched,
     total_inserted: totalInserted,
     results,
   };
+
+  // Save each collection attempt so the public dashboard can show a truthful timestamp.
+  const { error: logError } = await supabaseAdmin
+    .from("collection_runs")
+    .insert({
+      collection_time: collectionTime,
+      success: collectionSummary.success,
+      sources_checked: activeSources.length,
+      sources_failed: failedSources.length,
+      total_fetched: totalFetched,
+      total_inserted: totalInserted,
+    });
+
+  if (logError) {
+    // Logging must not turn a successful collection into a failed collection.
+    console.error(
+      "[rss-collector] Unable to save collection history:",
+      getErrorDetails(logError)
+    );
+  }
+
+  return collectionSummary;
 }
