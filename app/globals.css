@@ -191,6 +191,45 @@ a.sidebar-directory-link:hover {
 .sidebar-admin-link:hover {
   border-color: var(--accent);
 }
+.sidebar-admin-link {
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.sidebar-admin-link.has-pending {
+  background: #fff2dc;
+  border-color: #e4a13b;
+  color: #814a08;
+  box-shadow: 0 0 0 2px rgba(228, 161, 59, 0.12);
+}
+.sidebar-admin-link.has-pending:hover {
+  background: #ffe9c5;
+  border-color: #cf871f;
+}
+.sidebar-admin-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #f2bd62;
+  color: #3f2908;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+.dark .sidebar-admin-link.has-pending {
+  background: #382b19;
+  border-color: #9c6a2b;
+  color: #ffd28a;
+  box-shadow: 0 0 0 2px rgba(242, 189, 98, 0.1);
+}
+.dark .sidebar-admin-link.has-pending:hover {
+  background: #45341d;
+}
+.dark .sidebar-admin-badge {
+  background: #9c6a2b;
+  color: #fff4df;
+}
 .brand {
   display: flex;
   align-items: center;
