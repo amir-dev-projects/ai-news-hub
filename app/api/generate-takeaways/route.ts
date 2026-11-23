@@ -252,10 +252,12 @@ If no insight qualifies, return {"takeaways": []}.
       body: JSON.stringify({
         model: MODEL,
         instructions,
-        input: JSON.stringify({
-          recent_articles: articleContext,
-          previous_takeaways: previousContext,
-        }),
+        input: `Return the result as a JSON object using the requested structure.
+
+${JSON.stringify({
+  recent_articles: articleContext,
+  previous_takeaways: previousContext,
+})}`,
         text: { format: { type: "json_object" } },
         max_output_tokens: 3500,
         store: false,
