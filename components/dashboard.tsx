@@ -454,7 +454,12 @@ export default function Dashboard() {
             )}
           </div>
 
-          <a href="/admin/takeaways" className="nav-item sidebar-admin-link">
+          <a
+            href="/admin/takeaways"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="nav-item sidebar-admin-link"
+          >
             <ShieldCheck size={16} />
             Admin · Takeaway review
           </a>
