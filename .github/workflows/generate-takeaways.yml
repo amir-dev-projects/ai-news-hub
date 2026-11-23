@@ -1,0 +1,32 @@
+name: Generate Daily AI Takeaways
+
+on:
+  schedule:
+    # 15:17 UTC = 7:17 AM Vancouver during standard time.
+    # Fixed UTC schedule; it does not adjust automatically for daylight saving.
+    - cron: "17 15 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-takeaways:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate daily takeaways
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET is not configured in GitHub Actions repository secrets."
+            exit 1
+          fi
+
+          curl --fail-with-body --silent --show-error \
+            --max-time 180 \
+            --request POST \
+            --url "https://ai-news-hub-gilt.vercel.app/api/generate-takeaways" \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            --header "Content-Type: application/json" \
+            --data '{}'
