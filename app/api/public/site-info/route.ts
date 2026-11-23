@@ -57,7 +57,7 @@ function mapDirectory(rows: Row[]) {
 
 export async function GET() {
   try {
-    const [sourcesResult, providersResult, collectionResult] =
+    const [sourcesResult, providersResult, collectionResult, draftsResult] =
       await Promise.all([
         supabaseAdmin
           .from("news_sources")
@@ -73,6 +73,10 @@ export async function GET() {
           )
           .order("collection_time", { ascending: false })
           .limit(1),
+        supabaseAdmin
+          .from("daily_takeaways")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "draft"),
       ]);
 
     if (sourcesResult.error) throw sourcesResult.error;
@@ -98,6 +102,7 @@ export async function GET() {
               ? latestRun.sources_failed
               : null,
           collectionLogAvailable: !collectionResult.error,
+          pendingTakeawaysCount: draftsResult.error ? null : draftsResult.count ?? 0,
         },
       },
       { headers: { "Cache-Control": "no-store" } }
