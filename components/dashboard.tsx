@@ -21,6 +21,9 @@ import {
   Workflow,
   Target,
   Brain,
+  Clock3,
+  ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 
 import ThemeToggle from '@/components/theme-toggle';
@@ -87,6 +90,21 @@ function getEvidenceList(value: unknown): EvidenceItem[] {
   );
 }
 
+type DirectoryEntry = {
+  id: string;
+  name: string;
+  url: string | null;
+};
+
+type SiteInfo = {
+  newsSources: DirectoryEntry[];
+  trainingProviders: DirectoryEntry[];
+  lastCollectionAt: string | null;
+  lastCollectionSuccess: boolean | null;
+  sourcesFailed: number | null;
+  collectionLogAvailable: boolean;
+};
+
 type Article = {
   id: string;
   title: string;
@@ -131,6 +149,37 @@ export default function Dashboard() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loadingArticles, setLoadingArticles] = useState(true);
   const [articleError, setArticleError] = useState('');
+  const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null);
+  const [siteInfoLoading, setSiteInfoLoading] = useState(true);
+  const [siteInfoError, setSiteInfoError] = useState('');
+
+  useEffect(() => {
+    async function loadSiteInfo() {
+      setSiteInfoLoading(true);
+      setSiteInfoError('');
+
+      try {
+        const response = await fetch('/api/public/site-info', {
+          cache: 'no-store',
+        });
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Unable to load source information.');
+        }
+
+        setSiteInfo(result.siteInfo as SiteInfo);
+      } catch (error) {
+        setSiteInfoError(
+          error instanceof Error ? error.message : 'Unable to load source information.'
+        );
+      } finally {
+        setSiteInfoLoading(false);
+      }
+    }
+
+    loadSiteInfo();
+  }, []);
 
   useEffect(() => {
     async function loadTakeaways() {
@@ -240,6 +289,18 @@ export default function Dashboard() {
     });
   }
 
+  function formatDateTime(date: string | null) {
+    if (!date) return 'Not recorded yet';
+
+    return new Date(date).toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -283,6 +344,120 @@ export default function Dashboard() {
               </button>
             ))}
           </nav>
+        </div>
+
+        {/* Source and platform directory */}
+        <div className="sidebar-directory">
+          <div className="nav-label">TRUST & ACTIVITY</div>
+
+          <details className="sidebar-disclosure">
+            <summary>
+              <span className="sidebar-disclosure-title">
+                <BookOpen size={15} />
+                Active news sources
+              </span>
+              <span className="sidebar-disclosure-count">
+                {siteInfoLoading ? '—' : siteInfo?.newsSources.length ?? 0}
+              </span>
+              <ChevronRight size={14} className="sidebar-disclosure-chevron" />
+            </summary>
+            <div className="sidebar-directory-list">
+              {siteInfoLoading ? (
+                <span className="sidebar-directory-empty">Loading sources...</span>
+              ) : siteInfoError ? (
+                <span className="sidebar-directory-empty">Unable to load sources</span>
+              ) : siteInfo?.newsSources.length ? (
+                siteInfo.newsSources.map((source) => (
+                  source.url ? (
+                    <a
+                      key={source.id}
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="sidebar-directory-link"
+                    >
+                      {source.name}
+                      <ExternalLink size={10} />
+                    </a>
+                  ) : (
+                    <span key={source.id} className="sidebar-directory-link">
+                      {source.name}
+                    </span>
+                  )
+                ))
+              ) : (
+                <span className="sidebar-directory-empty">No active sources found</span>
+              )}
+            </div>
+          </details>
+
+          <details className="sidebar-disclosure">
+            <summary>
+              <span className="sidebar-disclosure-title">
+                <GraduationCap size={16} />
+                Training providers
+              </span>
+              <span className="sidebar-disclosure-count">
+                {siteInfoLoading ? '—' : siteInfo?.trainingProviders.length ?? 0}
+              </span>
+              <ChevronRight size={14} className="sidebar-disclosure-chevron" />
+            </summary>
+            <div className="sidebar-directory-list">
+              {siteInfoLoading ? (
+                <span className="sidebar-directory-empty">Loading providers...</span>
+              ) : siteInfoError ? (
+                <span className="sidebar-directory-empty">Unable to load providers</span>
+              ) : siteInfo?.trainingProviders.length ? (
+                siteInfo.trainingProviders.map((provider) => (
+                  provider.url ? (
+                    <a
+                      key={provider.id}
+                      href={provider.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="sidebar-directory-link"
+                    >
+                      {provider.name}
+                      <ExternalLink size={10} />
+                    </a>
+                  ) : (
+                    <span key={provider.id} className="sidebar-directory-link">
+                      {provider.name}
+                    </span>
+                  )
+                ))
+              ) : (
+                <span className="sidebar-directory-empty">No providers found</span>
+              )}
+            </div>
+          </details>
+
+          <div className="sidebar-info-card">
+            <div className="sidebar-info-heading">
+              <Clock3 size={14} />
+              Collection frequency target
+            </div>
+            <div className="sidebar-info-value">Every 6 hours</div>
+            <div className="sidebar-info-foot">Last update</div>
+            <div className="sidebar-info-time">
+              {formatDateTime(siteInfo?.lastCollectionAt || null)}
+            </div>
+            {siteInfo?.lastCollectionSuccess === false && (
+              <div className="sidebar-info-warning">
+                Last run reported {siteInfo.sourcesFailed ?? 0} source errors
+              </div>
+            )}
+            {!siteInfo?.collectionLogAvailable && !siteInfoLoading && (
+              <div className="sidebar-info-foot">
+                Collection history will appear after setup
+              </div>
+            )}
+          </div>
+
+          <a href="/admin/takeaways" className="nav-item sidebar-admin-link">
+            <ShieldCheck size={16} />
+            Admin · Takeaway review
+          </a>
         </div>
 
         {/* Sidebar footer */}
@@ -685,33 +860,6 @@ export default function Dashboard() {
               </span>
             </div>
           </section>
-
-          {/* Statistics */}
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-label">Active news sources</div>
-              <div className="stat-value">10</div>
-              <div className="stat-foot">
-                Registered in Supabase
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-label">Training providers</div>
-              <div className="stat-value">10</div>
-              <div className="stat-foot">
-                Registered learning platforms
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-label">Collection frequency target</div>
-              <div className="stat-value">6 hours</div>
-              <div className="stat-foot">
-                Four scheduled collections daily
-              </div>
-            </div>
-          </div>
 
           {/* Categories */}
           <div className="section-heading">
