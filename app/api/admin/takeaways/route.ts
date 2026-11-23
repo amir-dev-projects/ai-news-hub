@@ -10,10 +10,12 @@ const VALID_DOMAINS = [
   "Both",
 ] as const;
 
+function getAdminSecret() {
+  return process.env.TAKEAWAYS_ADMIN_SECRET?.trim() || null;
+}
+
 function isAuthorized(request: NextRequest) {
-  const adminSecret =
-    process.env.TAKEAWAYS_ADMIN_SECRET ||
-    process.env.AI_NEWS_HUB_GENERATION_SECRET;
+  const adminSecret = getAdminSecret();
 
   return Boolean(
     adminSecret &&
@@ -21,15 +23,30 @@ function isAuthorized(request: NextRequest) {
   );
 }
 
-function unauthorized() {
-  return NextResponse.json(
-    { success: false, error: "Unauthorized. Check your review secret." },
-    { status: 401 }
-  );
+function accessError(request: NextRequest) {
+  if (!getAdminSecret()) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Admin access is not configured. Add TAKEAWAYS_ADMIN_SECRET to Vercel Environment Variables and redeploy.",
+      },
+      { status: 503 }
+    );
+  }
+
+  if (!isAuthorized(request)) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized. Check your Admin secret." },
+      { status: 401 }
+    );
+  }
+
+  return null;
 }
 
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) return unauthorized();
+  const authError = accessError(request);
+  if (authError) return authError;
 
   try {
     const { data, error } = await supabaseAdmin
