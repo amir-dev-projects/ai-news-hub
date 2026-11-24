@@ -220,8 +220,29 @@ SELECTION RULES:
 - Use only supporting article IDs from the supplied article list.
 - Suggested resources should be useful resource types or known learning
   materials. Do not invent URLs.
-- The collapsed description must be no more than two sentences.
 - Write in clear, practical English. Avoid hype and generic advice.
+
+ROLE-SPECIFIC LEARNING SUMMARY — REQUIRED:
+- The "description" is the visible, collapsed summary on the AI News Hub
+  dashboard. It must do more than repeat or paraphrase the news headline.
+  It must explicitly explain what the relevant manager can learn from the
+  development and how that lesson could inform their work.
+- If domain is "Program Management", explicitly name "Program Managers" or
+  "a Program Manager" and state the specific program-management lesson.
+- If domain is "Product Management", explicitly name "Product Managers" or
+  "a Product Manager" and state the specific product-management lesson.
+- If domain is "Both", use two concise parts or sentences: one explicitly
+  naming the Program Manager lesson and one explicitly naming the Product
+  Manager lesson. Do not use one vague statement that could apply to anyone.
+- Keep the description to no more than two sentences. Make the learning
+  practical and specific to the supplied article evidence. Do not force a
+  role-specific lesson when the article does not support one; in that case,
+  do not select the article as a takeaway.
+- The "what_to_learn" field must expand on the summary with the concrete
+  capability, method, decision skill, or management practice the relevant
+  manager should develop. For "Both", distinguish the two role perspectives.
+- The "practical_application" must show how the relevant manager could use
+  that learning in a realistic work situation. Avoid generic advice.
 
 OUTPUT:
 Return valid JSON only, with this exact shape:
@@ -230,10 +251,10 @@ Return valid JSON only, with this exact shape:
     {
       "title": "Short learning-focused title",
       "domain": "Program Management | Product Management | Both",
-      "description": "No more than two sentences.",
-      "why_it_matters": "Explain the professional or business relevance.",
-      "what_to_learn": "Describe the knowledge or skill to develop.",
-      "practical_application": "Give a realistic example of applying it.",
+      "description": "One or two sentences explicitly stating what the relevant Program Manager and/or Product Manager can learn from this story.",
+      "why_it_matters": "Explain the professional or business relevance for the named role or roles.",
+      "what_to_learn": "Describe the specific capability or practice to develop, distinguishing roles when domain is Both.",
+      "practical_application": "Give a realistic example of applying the lesson in that role.",
       "learning_focus": "Short subject label.",
       "suggested_resources": ["Resource suggestion"],
       "supporting_article_ids": ["exact article UUID"]
