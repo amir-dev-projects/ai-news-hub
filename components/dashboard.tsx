@@ -105,6 +105,10 @@ type SiteInfo = {
   sourcesFailed: number | null;
   collectionLogAvailable: boolean;
   pendingTakeawaysCount: number | null;
+  lastCollectionSourcesChecked: number | null;
+  lastCollectionTotalFetched: number | null;
+  lastCollectionTotalInserted: number | null;
+  latestArticlePublishedAt: string | null;
 };
 
 type Article = {
@@ -461,9 +465,21 @@ export default function Dashboard() {
               Collection frequency target
             </div>
             <div className="sidebar-info-value">Every 6 hours</div>
-            <div className="sidebar-info-foot">Last update</div>
+            <div className="sidebar-info-foot">Last checked</div>
             <div className="sidebar-info-time">
               {formatDateTime(siteInfo?.lastCollectionAt || null)}
+            </div>
+            <div className="sidebar-info-foot">Last check results</div>
+            <div className="sidebar-info-time">
+              {siteInfoLoading
+                ? 'Checking feeds...'
+                : siteInfo?.collectionLogAvailable
+                  ? `${siteInfo.lastCollectionTotalInserted ?? 0} new stories · ${siteInfo.lastCollectionSourcesChecked ?? 0} RSS feeds checked`
+                  : 'Not available yet'}
+            </div>
+            <div className="sidebar-info-foot">Newest article published</div>
+            <div className="sidebar-info-time">
+              {formatDateTime(siteInfo?.latestArticlePublishedAt || null)}
             </div>
             {siteInfo?.lastCollectionSuccess === false && (
               <div className="sidebar-info-warning">
