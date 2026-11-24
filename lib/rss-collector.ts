@@ -3,7 +3,7 @@ import "server-only";
 import Parser from "rss-parser";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-const MAX_ITEMS_PER_FEED = 15;
+const MAX_ITEMS_PER_FEED = 25;
 
 type NewsSource = {
   id: string;
@@ -222,10 +222,25 @@ async function collectOneSource(
 
     const feed = await parser.parseString(xml);
 
-    const items = (feed.items || []).slice(
-      0,
-      MAX_ITEMS_PER_FEED
-    ) as FeedItem[];
+    // Do not assume every publisher returns its RSS items newest-first.
+    // Sort by publication date before applying the per-feed safety limit.
+    const allItems = (feed.items || []) as FeedItem[];
+    const publishedTime = (item: FeedItem) => {
+      const rawDate = item.isoDate || item.pubDate;
+      if (!rawDate) return 0;
+      const timestamp = Date.parse(rawDate);
+      return Number.isFinite(timestamp) ? timestamp : 0;
+    };
+    const items = [...allItems]
+      .sort((a, b) => publishedTime(b) - publishedTime(a))
+      .slice(0, MAX_ITEMS_PER_FEED);
+    const selectedDates = items
+      .map(publishedTime)
+      .filter((value) => value > 0)
+      .sort((a, b) => b - a);
+    const newestPublishedAt = selectedDates[0]
+      ? new Date(selectedDates[0]).toISOString()
+      : null;
 
     const rows = items
       .map((item) => {
@@ -280,6 +295,7 @@ async function collectOneSource(
         status: "success",
         fetched: items.length,
         inserted: 0,
+        newestPublishedAt,
         message: "No usable article entries were found.",
       };
     }
@@ -300,6 +316,7 @@ async function collectOneSource(
       fetched: items.length,
       usable: rows.length,
       inserted: data?.length || 0,
+      newestPublishedAt,
     };
   } catch (error) {
     const errorDetails = getErrorDetails(error);
