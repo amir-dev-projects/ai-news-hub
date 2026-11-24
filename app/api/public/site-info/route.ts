@@ -57,7 +57,7 @@ function mapDirectory(rows: Row[]) {
 
 export async function GET() {
   try {
-    const [sourcesResult, providersResult, collectionResult, draftsResult] =
+    const [sourcesResult, providersResult, collectionResult, draftsResult, latestArticleResult] =
       await Promise.all([
         supabaseAdmin
           .from("news_sources")
@@ -77,6 +77,12 @@ export async function GET() {
           .from("daily_takeaways")
           .select("id", { count: "exact", head: true })
           .eq("status", "draft"),
+        supabaseAdmin
+          .from("articles")
+          .select("published_at")
+          .not("published_at", "is", null)
+          .order("published_at", { ascending: false })
+          .limit(1),
       ]);
 
     if (sourcesResult.error) throw sourcesResult.error;
@@ -85,6 +91,9 @@ export async function GET() {
     const latestRun = collectionResult.error
       ? null
       : collectionResult.data?.[0] || null;
+    const latestArticle = latestArticleResult.error
+      ? null
+      : latestArticleResult.data?.[0] || null;
 
     return NextResponse.json(
       {
@@ -103,6 +112,13 @@ export async function GET() {
               : null,
           collectionLogAvailable: !collectionResult.error,
           pendingTakeawaysCount: draftsResult.error ? null : draftsResult.count ?? 0,
+          lastCollectionSourcesChecked:
+            typeof latestRun?.sources_checked === "number" ? latestRun.sources_checked : null,
+          lastCollectionTotalFetched:
+            typeof latestRun?.total_fetched === "number" ? latestRun.total_fetched : null,
+          lastCollectionTotalInserted:
+            typeof latestRun?.total_inserted === "number" ? latestRun.total_inserted : null,
+          latestArticlePublishedAt: latestArticle?.published_at || null,
         },
       },
       { headers: { "Cache-Control": "no-store" } }
