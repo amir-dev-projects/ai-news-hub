@@ -1,0 +1,31 @@
+name: Clean Up Old AI News
+
+on:
+  schedule:
+    # Weekly on Sunday morning in Vancouver during standard time.
+    # GitHub cron uses UTC and does not adjust for daylight saving time.
+    - cron: "17 16 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup-old-news:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger old-news cleanup
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET is not configured in GitHub Actions repository secrets."
+            exit 1
+          fi
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://ai-news-hub-gilt.vercel.app/api/cleanup-news" \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            --header "Content-Type: application/json" \
+            --data '{}'
