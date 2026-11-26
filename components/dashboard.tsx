@@ -213,6 +213,19 @@ export default function Dashboard() {
       setLoadingTakeaways(true);
       setTakeawayError('');
 
+      // Show published takeaways from today and the previous two UTC dates.
+      // Generation uses UTC dates, so this keeps the display window consistent.
+      const now = new Date();
+      const oldestVisibleDate = new Date(
+        Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate() - 2
+        )
+      )
+        .toISOString()
+        .slice(0, 10);
+
       const { data, error } = await supabase
         .from('daily_takeaways')
         .select(`
@@ -230,6 +243,7 @@ export default function Dashboard() {
           insight_key
         `)
         .eq('status', 'published')
+        .gte('generated_for', oldestVisibleDate)
         .order('generated_for', { ascending: false })
         .order('created_at', { ascending: false });
 
@@ -240,12 +254,7 @@ export default function Dashboard() {
       }
 
       const rows = (data || []) as Takeaway[];
-      if (rows.length > 0) {
-        const latestDate = rows[0].generated_for;
-        setTakeaways(rows.filter((item) => item.generated_for === latestDate));
-      } else {
-        setTakeaways([]);
-      }
+      setTakeaways(rows);
       setLoadingTakeaways(false);
     }
 
@@ -305,6 +314,43 @@ export default function Dashboard() {
       }),
     [articles, category, query]
   );
+
+  const takeawayGroups = useMemo(() => {
+    const grouped = new Map<string, Takeaway[]>();
+
+    for (const item of takeaways) {
+      const itemsForDate = grouped.get(item.generated_for) || [];
+      itemsForDate.push(item);
+      grouped.set(item.generated_for, itemsForDate);
+    }
+
+    return Array.from(grouped.entries()).map(([date, items]) => ({
+      date,
+      items,
+    }));
+  }, [takeaways]);
+
+  function formatTakeawayDate(date: string) {
+    const [year, month, day] = date.split('-').map(Number);
+    const targetUtc = Date.UTC(year, month - 1, day);
+    const now = new Date();
+    const todayUtc = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate()
+    );
+    const daysAgo = Math.round((todayUtc - targetUtc) / 86400000);
+    const formatted = new Date(targetUtc).toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+
+    if (daysAgo === 0) return `Today · ${formatted}`;
+    if (daysAgo === 1) return `Yesterday · ${formatted}`;
+    return formatted;
+  }
 
   function formatDate(date: string | null) {
     if (!date) return 'Recently added';
@@ -680,23 +726,52 @@ export default function Dashboard() {
                   style={{ margin: '0 auto 8px' }}
                 />
                 <strong style={{ display: 'block', color: 'var(--foreground)' }}>
-                  No new learning priorities today
+                  No published takeaways in the last three days
                 </strong>
                 <span>
-                  New takeaways will appear here when the latest AI developments
-                  offer useful learning opportunities.
+                  Published takeaways stay here for three days, so you have time
+                  to read and revisit them.
                 </span>
               </div>
             ) : (
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns:
-                    'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
-                  gap: 14,
-                }}
-              >
-                {takeaways.map((item) => {
+              <div style={{ display: 'grid', gap: 22 }}>
+                {takeawayGroups.map((group) => (
+                  <section key={group.date}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        marginBottom: 12,
+                        paddingBottom: 8,
+                        borderBottom: '1px solid var(--border)',
+                      }}
+                    >
+                      <h3
+                        style={{
+                          margin: 0,
+                          fontSize: 13,
+                          fontWeight: 750,
+                          color: 'var(--foreground)',
+                        }}
+                      >
+                        {formatTakeawayDate(group.date)}
+                      </h3>
+                      <span style={{ color: 'var(--muted)', fontSize: 10 }}>
+                        {group.items.length} {group.items.length === 1 ? 'takeaway' : 'takeaways'}
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
+                        gap: 14,
+                      }}
+                    >
+                      {group.items.map((item) => {
                   const Icon = getTakeawayIcon(item.domain);
                   const isExpanded = expandedTakeaways.includes(item.id);
                   const resources = getResourceList(item.suggested_resources);
@@ -887,8 +962,11 @@ export default function Dashboard() {
                         </div>
                       )}
                     </article>
-                  );
-                })}
+                      );
+                      })}
+                    </div>
+                  </section>
+                ))}
               </div>
             )}
 
@@ -905,8 +983,8 @@ export default function Dashboard() {
             >
               <span style={{ fontSize: 11, color: 'var(--muted)' }}>
                 {loadingTakeaways
-                  ? 'Checking for published learning priorities'
-                  : `${takeaways.length} learning ${takeaways.length === 1 ? 'priority' : 'priorities'}${takeaways.length > 0 ? ' · Expand a card to learn more' : ''}`}
+                  ? 'Checking for recent published takeaways'
+                  : `${takeaways.length} published ${takeaways.length === 1 ? 'takeaway' : 'takeaways'} from the last 3 days${takeaways.length > 0 ? ' · Expand a card to learn more' : ''}`}
               </span>
 
               <span style={{ fontSize: 11, color: 'var(--muted)' }}>
