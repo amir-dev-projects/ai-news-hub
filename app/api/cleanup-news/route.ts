@@ -7,6 +7,7 @@ export const maxDuration = 60;
 
 // Keep a rolling news archive. Saved/bookmarked articles are never deleted.
 const RETENTION_DAYS = 90;
+const TAKEAWAY_RETENTION_DAYS = 30;
 const BATCH_SIZE = 250;
 const MAX_ROWS_SCANNED_PER_RUN = 5000;
 
@@ -99,6 +100,32 @@ async function cleanupOldArticles() {
   };
 }
 
+async function cleanupOldTakeaways() {
+  const cutoffDate = new Date(
+    Date.now() - TAKEAWAY_RETENTION_DAYS * 24 * 60 * 60 * 1000
+  )
+    .toISOString()
+    .slice(0, 10);
+
+  // Keep the Admin history for 30 days. Never auto-delete drafts that
+  // are still waiting for review.
+  const { data, error } = await supabaseAdmin
+    .from("daily_takeaways")
+    .delete()
+    .lt("generated_for", cutoffDate)
+    .in("status", ["published", "discarded"])
+    .select("id");
+
+  if (error) throw error;
+
+  return {
+    retention_days: TAKEAWAY_RETENTION_DAYS,
+    cutoff_date: cutoffDate,
+    deleted: data?.length || 0,
+    drafts_preserved: true,
+  };
+}
+
 export async function POST(request: NextRequest) {
   if (!isAuthorized(request)) {
     return NextResponse.json(
@@ -108,10 +135,19 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await cleanupOldArticles();
-    return NextResponse.json(result, {
-      headers: { "Cache-Control": "no-store" },
-    });
+    const [articleCleanup, takeawayCleanup] = await Promise.all([
+      cleanupOldArticles(),
+      cleanupOldTakeaways(),
+    ]);
+
+    return NextResponse.json(
+      {
+        success: true,
+        article_cleanup: articleCleanup,
+        takeaway_cleanup: takeawayCleanup,
+      },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to clean up old news.";
